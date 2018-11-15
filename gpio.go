@@ -1,8 +1,6 @@
 package rotaryphone
 
-import (
-    "github.com/brian-armstrong/gpio"
-)
+import "github.com/brian-armstrong/gpio"
 
 //3.3v  => white wire
 const DialIncrementPin = 18 //=> orange wire
@@ -12,6 +10,10 @@ const LatchPin = 8
 type GpioAdapter struct {
     digitChannel chan int
     hangupChannel chan struct{}
+}
+
+func NewGpioAdapter() *GpioAdapter {
+    return &GpioAdapter{make(chan int), make(chan struct{})}
 }
 
 func (g GpioAdapter) Run() {

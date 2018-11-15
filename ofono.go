@@ -11,6 +11,7 @@ const Object = "org.ofono"
 const GetModemInterface = "org.ofono.Manager.GetModems"
 const DialInterface = "org.ofono.VoiceCallManager.Dial"
 const HangupAllInterface = "org.ofono.VoiceCallManager.HangupAll"
+const DebugInterface = "org.freedesktop.DBus.Introspectable.Introspect"
 
 type OfonoAdapter struct {
     conn *dbus.Conn
@@ -54,4 +55,24 @@ func (o *OfonoAdapter) Hangup() {
         return
     }
     return
+}
+
+func (o OfonoAdapter) Debug() {
+    var s string
+    err := o.conn.Object(Object, "/").Call(DebugInterface, 0).Store(&s)
+    if err != nil {
+        fmt.Fprintln(os.Stderr, "Failed to introspect ofono root", err)
+    }
+    fmt.Println("Root introspection:", s)
+    println()
+
+    var s2 string
+    err = o.conn.Object(Object, o.modem).Call(DebugInterface, 0).Store(&s2)
+    if err != nil {
+        fmt.Fprintln(os.Stderr, "Failed to introspect ofono modem", err)
+    }
+    fmt.Println("Modem introspection:", s2)
+    println()
+
+    fmt.Println("Modem:", o.modem)
 }

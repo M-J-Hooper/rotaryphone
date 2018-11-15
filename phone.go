@@ -8,6 +8,7 @@ import (
 type OutputAdapter interface {
     Call(string)
     Hangup()
+    Debug()
 }
 
 type InputAdapter interface {
@@ -23,10 +24,7 @@ type Rotary struct {
 }
 
 func NewRotary(digitTimeout time.Duration) *Rotary {
-    input := GpioAdapter{make(chan int), make(chan struct{})}
-    output := NewOfonoAdapter()
-
-    return &Rotary{digitTimeout, input, output}
+    return &Rotary{digitTimeout, NewGpioAdapter(), NewOfonoAdapter()}
 }
 
 func (r *Rotary) Run() {
@@ -53,4 +51,8 @@ func (r *Rotary) Run() {
             time.Sleep(100 * time.Millisecond)
         }
     }
+}
+
+func (r Rotary) Debug() {
+    r.output.Debug()
 }
