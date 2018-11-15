@@ -4,8 +4,9 @@ import (
     "github.com/brian-armstrong/gpio"
 )
 
-const DialIncrementPin = 18
-const DialTogglePin = 24
+//3.3v  => white wire
+const DialIncrementPin = 18 //=> orange wire
+const DialTogglePin = 24    //=> brown wire
 const LatchPin = 8
 
 type GpioAdapter struct {
