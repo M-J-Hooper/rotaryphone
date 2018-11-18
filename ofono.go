@@ -14,7 +14,7 @@ const HangupAllInterface = "org.ofono.VoiceCallManager.HangupAll"
 const DebugInterface = "org.freedesktop.DBus.Introspectable.Introspect"
 
 type OfonoAdapter struct {
-    conn *dbus.Conn
+    conn dbus.Conn
     modem dbus.ObjectPath
 }
 
@@ -32,7 +32,7 @@ func NewOfonoAdapter() *OfonoAdapter {
         return nil
     }
 
-    return &OfonoAdapter{conn, modems[0][0].(dbus.ObjectPath)}
+    return &OfonoAdapter{*conn, modems[0][0].(dbus.ObjectPath)}
 }
 
 

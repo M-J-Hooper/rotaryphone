@@ -11,42 +11,47 @@ type OutputAdapter interface {
     Debug()
 }
 
-type InputAdapter interface {
-    Run()
-    GetDigitChannel() chan int
-    GetHangupChannel() chan struct{}
-}
-
 type Rotary struct {
     digitTimeout time.Duration
-    input InputAdapter
     output OutputAdapter
+    dial Dial
+    latch Latch
 }
 
 func NewRotary(digitTimeout time.Duration) *Rotary {
-    return &Rotary{digitTimeout, NewGpioAdapter(), NewOfonoAdapter()}
+    r := &Rotary{
+        digitTimeout,
+        NewOfonoAdapter(),
+        *NewDial(),
+        *NewLatch(),
+    }
+    return r
 }
 
-func (r *Rotary) Run() {
+func (r Rotary) Run() {
+    var dialing bool
     var number string
     lastDigit := time.Now()
-
-    go r.input.Run()
     for {
         select {
-        case digit := <-r.input.GetDigitChannel():
-            number += strconv.Itoa(digit)
-            println("New number is " + number)
-            lastDigit = time.Now()
-        case <-r.input.GetHangupChannel():
-            println("Hanging up")
-            //r.output.Hangup()
-        default:
-            if time.Since(lastDigit) > r.digitTimeout && len(number) > 0 {
-                r.output.Call(number)
-                println("Calling " + number)
+        case digit := <-r.dial.digit:
+            if true { //dialing {
+                number += strconv.Itoa(digit)
                 lastDigit = time.Now()
+                println("New number is " + number)
+            }
+        case dialing = <-r.latch.active:
+            if !dialing {
+                r.output.Hangup()
                 number = ""
+                println("Hanging up")
+            }
+        default:
+            if time.Since(lastDigit) > r.digitTimeout && len(number) > 0 {}
+            if false {
+                r.output.Call(number)
+                lastDigit = time.Now()
+                println("Calling " + number)
             }
             time.Sleep(100 * time.Millisecond)
         }
