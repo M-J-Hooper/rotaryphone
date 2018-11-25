@@ -35,23 +35,24 @@ func (r Rotary) Run() {
     for {
         select {
         case digit := <-r.dial.digit:
-            if true { //dialing {
+            if dialing {
                 number += strconv.Itoa(digit)
                 lastDigit = time.Now()
                 println("New number is " + number)
             }
         case dialing = <-r.latch.active:
             if !dialing {
+                println("Handset on the latch")
                 r.output.Hangup()
                 number = ""
-                println("Hanging up")
+            } else {
+                println("Handset off the latch")
             }
         default:
-            if time.Since(lastDigit) > r.digitTimeout && len(number) > 0 {}
-            if false {
+            if time.Since(lastDigit) > r.digitTimeout && len(number) > 0 {
+                println("Calling " + number)
                 r.output.Call(number)
                 lastDigit = time.Now()
-                println("Calling " + number)
             }
             time.Sleep(100 * time.Millisecond)
         }

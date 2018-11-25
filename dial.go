@@ -3,8 +3,8 @@ package rotaryphone
 import "time"
 
 //3.3v  => white wire
-const DialIncrementPin = 18 //=> orange wire
-const DialActivePin = 24    //=> brown wire
+const DialIncrementPin = 16 //=> orange wire
+const DialActivePin = 20    //=> brown wire
 
 type Dial struct {
     digit chan int

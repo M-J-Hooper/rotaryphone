@@ -3,7 +3,7 @@ package rotaryphone
 import "time"
 
 //3.3v  => white wire
-const LatchActivePin = 8
+const LatchActivePin = 21 // => dark green wire
 
 type Latch struct {
     active chan bool
@@ -16,16 +16,18 @@ func NewLatch() *Latch {
 }
 
 func (l Latch) Run() {
-    watcher := NewDebouncedWatcher(10 * time.Millisecond)
+    watcher := NewDebouncedWatcher(100 * time.Millisecond)
     watcher.AddPin(LatchActivePin)
     defer watcher.Close()
 
     for {
-        _, value := watcher.Watch()
-        if value == 1 {
-            l.active <-true
-        } else {
-            l.active <-false
+        pin, value := watcher.Watch()
+        if pin == LatchActivePin {
+            if value == 1 {
+                l.active <-true
+            } else {
+                l.active <-false
+            }
         }
     }
 }
