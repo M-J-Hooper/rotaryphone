@@ -15,7 +15,6 @@ const DebugInterface = "org.freedesktop.DBus.Introspectable.Introspect"
 
 type OfonoAdapter struct {
     conn dbus.Conn
-    modem dbus.ObjectPath
 }
 
 func NewOfonoAdapter() *OfonoAdapter {
@@ -24,22 +23,21 @@ func NewOfonoAdapter() *OfonoAdapter {
         fmt.Fprintln(os.Stderr, "Failed to connect to SystemBus bus:", err)
         return nil //what to do about errors...
     }
-
-    var modems [][]interface {}
-    err = conn.Object(Object, "/").Call(GetModemInterface, 0).Store(&modems)
-    if err != nil {
-        fmt.Fprintln(os.Stderr, "Failed to get modems:", err)
-        return nil
-    }
-
-    return &OfonoAdapter{*conn, modems[0][0].(dbus.ObjectPath)}
+    return &OfonoAdapter{*conn}
 }
 
-
+func (o *OfonoAdapter) GetModem() dbus.ObjectPath {
+    var modems [][]interface {}
+    err := o.conn.Object(Object, "/").Call(GetModemInterface, 0).Store(&modems)
+    if err != nil {
+        fmt.Fprintln(os.Stderr, "Failed to get modems:", err)
+    }
+    return modems[0][0].(dbus.ObjectPath)
+}
 
 func (o *OfonoAdapter) Call(number string) {
     var path string
-    err := o.conn.Object(Object, o.modem).Call(DialInterface, 0, number, "default").Store(&path)
+    err := o.conn.Object(Object, o.GetModem()).Call(DialInterface, 0, number, "default").Store(&path)
     if err != nil {
         fmt.Fprintln(os.Stderr, "Failed to dial:", err)
         return
@@ -49,7 +47,7 @@ func (o *OfonoAdapter) Call(number string) {
 
 func (o *OfonoAdapter) Hangup() {
     var s string
-    err := o.conn.Object(Object, o.modem).Call(HangupAllInterface, 0).Store(&s)
+    err := o.conn.Object(Object, o.GetModem()).Call(HangupAllInterface, 0).Store(&s)
     if err != nil {
         fmt.Fprintln(os.Stderr, "Failed to dial:", err)
         return
@@ -66,13 +64,14 @@ func (o OfonoAdapter) Debug() {
     fmt.Println("Root introspection:", s)
     println()
 
+    modem := o.GetModem()
+    fmt.Println("Modem:", modem)
+
     var s2 string
-    err = o.conn.Object(Object, o.modem).Call(DebugInterface, 0).Store(&s2)
+    err = o.conn.Object(Object, modem).Call(DebugInterface, 0).Store(&s2)
     if err != nil {
         fmt.Fprintln(os.Stderr, "Failed to introspect ofono modem", err)
     }
     fmt.Println("Modem introspection:", s2)
     println()
-
-    fmt.Println("Modem:", o.modem)
 }
