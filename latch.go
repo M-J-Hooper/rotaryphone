@@ -3,10 +3,10 @@ package rotaryphone
 import "time"
 
 //3.3v  => white wire
-const LatchActivePin = 21 // => dark green wire
+const LatchActivePin = 18 // => dark green wire
 
 type Latch struct {
-    active chan bool
+    Active chan bool
 }
 
 func NewLatch() *Latch {
@@ -21,12 +21,14 @@ func (l Latch) Run() {
     defer watcher.Close()
 
     for {
+        println("Calling latch watch")
         pin, value := watcher.Watch()
+        println("After latch watch")
         if pin == LatchActivePin {
             if value == 1 {
-                l.active <-true
+                l.Active <-true
             } else {
-                l.active <-false
+                l.Active <-false
             }
         }
     }

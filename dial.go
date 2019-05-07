@@ -3,8 +3,8 @@ package rotaryphone
 import "time"
 
 //3.3v  => white wire
-const DialIncrementPin = 16 //=> orange wire
-const DialActivePin = 20    //=> brown wire
+const DialIncrementPin = 14 //=> orange wire
+const DialActivePin = 15    //=> brown wire
 
 type Dial struct {
     digit chan int
@@ -22,10 +22,12 @@ func (d Dial) Run() {
     watcher.AddPin(DialActivePin)
     defer watcher.Close()
 
-    active := false
-    count := 0
+    var active bool
+    var count int
     for {
+        println("Calling dial watch")
         pin, value := watcher.Watch()
+        println("After dial watch")
         if pin == DialActivePin {
             if value == 1 {
                 active = true

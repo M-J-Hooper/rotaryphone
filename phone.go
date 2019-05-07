@@ -19,13 +19,12 @@ type Rotary struct {
 }
 
 func NewRotary(digitTimeout time.Duration) *Rotary {
-    r := &Rotary{
+    return &Rotary{
         digitTimeout,
         NewOfonoAdapter(),
         *NewDial(),
         *NewLatch(),
     }
-    return r
 }
 
 func (r Rotary) Run() {
@@ -40,7 +39,7 @@ func (r Rotary) Run() {
                 lastDigit = time.Now()
                 println("New number is " + number)
             }
-        case dialing = <-r.latch.active:
+        case dialing = <-r.latch.Active:
             if !dialing {
                 println("Handset on the latch")
                 r.output.Hangup()

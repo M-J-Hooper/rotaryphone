@@ -1,0 +1,63 @@
+package rotaryphone
+
+import (
+    "time"
+    "fmt"
+
+    "github.com/brian-armstrong/gpio"
+)
+
+type DebouncedWatcher struct {
+    *gpio.Watcher
+    bounceTime time.Duration
+    currentValue map[uint]uint
+}
+
+func NewDebouncedWatcher(bounceTime time.Duration) *DebouncedWatcher {
+    return &DebouncedWatcher{
+        gpio.NewWatcher(),
+        bounceTime,
+        make(map[uint]uint),
+    }
+}
+
+func (dbw *DebouncedWatcher) Watch() (uint, uint) {
+    stable := make(chan gpio.WatcherNotification)
+    for {
+        select {
+        case n := <-dbw.Notification:
+            fmt.Println("Notification", n.Pin, n.Value)
+            // // Stop goroutine waiting for stability
+            // if waiting {
+            //     stop <-struct{}{}
+            //     waiting = false
+            // }
+            // if n.Value != dbw.currentValue[n.Pin] {
+            //     go func(n gpio.WatcherNotification, stable chan gpio.WatcherNotification, stop chan struct{}) {
+            //         id := rand.Intn(10000)
+            //         fmt.Println(id, "Starting goroutine")
+            //         start := time.Now()
+            //         for {
+            //             select {
+            //             case <-stop:
+            //                 fmt.Println(id, "Got cancel")
+            //                 return
+            //             default:
+            //                 if time.Since(start) > dbw.bounceTime {
+            //                     fmt.Println(id, "Sending stable", n.Pin, n.Value)
+            //                     stable <-n
+            //                     return
+            //                 }
+            //             }
+            //         }
+            //     }(n, stable, stop)
+            //     waiting = true
+            // }
+        case n := <-stable:
+            fmt.Println("Got stable", n.Pin, n.Value)
+            dbw.currentValue[n.Pin] = n.Value
+            return n.Pin, n.Value
+        }
+    }
+    return 0, 0
+}
