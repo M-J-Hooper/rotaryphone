@@ -1,13 +1,14 @@
-package main
+package functional
 
 import (
 	"fmt"
+	"testing"
 
 	"github.com/M-J-Hooper/rotaryphone"
 	"github.com/brian-armstrong/gpio"
 )
 
-func main() {
+func TestPinsFunctional(t *testing.T) {
 	watcher := gpio.NewWatcher()
 	watcher.AddPin(rotaryphone.DialActivePin)
 	watcher.AddPin(rotaryphone.DialIncrementPin)

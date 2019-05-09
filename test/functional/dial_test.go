@@ -1,12 +1,13 @@
-package main
+package functional
 
 import (
 	"fmt"
+	"testing"
 
 	"github.com/M-J-Hooper/rotaryphone"
 )
 
-func main() {
+func TestDialFunctional(t *testing.T) {
 	dial := rotaryphone.NewDial()
 	for {
 		digit := <-dial.Digit

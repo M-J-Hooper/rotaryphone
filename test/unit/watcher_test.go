@@ -1,6 +1,7 @@
-package test
+package unit
 
 import (
+	"math/rand"
 	"testing"
 	"time"
 
@@ -10,12 +11,14 @@ import (
 
 func TestDebouncedWatcher(t *testing.T) {
 	dbw := rotaryphone.DebouncedWatcher{
-		NewTestWatcher(),
-		100 * time.Millisecond,
-		make(map[uint]uint),
+		Watcher:       NewTestWatcher(),
+		BounceTime:    100 * time.Millisecond,
+		CurrentValues: make(map[uint]uint),
 	}
-
-	dbw.Watch()
+	// Eventually there will be 5 stable signals
+	for i := 0; i < 5; i++ {
+		dbw.Watch()
+	}
 }
 
 type TestWatcher struct {
@@ -23,12 +26,15 @@ type TestWatcher struct {
 }
 
 func NewTestWatcher() *TestWatcher {
+	rand.Seed(time.Now().UnixNano())
 	c := make(chan gpio.WatcherNotification)
 	go func(c chan gpio.WatcherNotification) {
-		for i := 0; i < 20; i++ {
-			sleep := time.Duration(i*10) * time.Millisecond
+		for {
+			sleep := 40 * time.Millisecond
 			time.Sleep(sleep)
-			c <- gpio.WatcherNotification{1, uint(i % 2)}
+
+			value := uint(rand.Intn(2))
+			c <- gpio.WatcherNotification{Pin: 1, Value: value}
 		}
 	}(c)
 	return &TestWatcher{c}
