@@ -8,20 +8,19 @@ import (
 type OutputAdapter interface {
 	Call(string)
 	Hangup()
-	Debug()
 }
 
 type Rotary struct {
+	OutputAdapter
 	digitTimeout time.Duration
-	output       OutputAdapter
 	dial         Dial
 	latch        Latch
 }
 
 func NewRotary(digitTimeout time.Duration) *Rotary {
 	return &Rotary{
-		digitTimeout,
 		NewOfonoAdapter(),
+		digitTimeout,
 		*NewDial(),
 		*NewLatch(),
 	}
@@ -42,7 +41,7 @@ func (r Rotary) Run() {
 		case dialing = <-r.latch.Active:
 			if !dialing {
 				println("Handset on the latch")
-				r.output.Hangup()
+				r.Hangup()
 				number = ""
 			} else {
 				println("Handset off the latch")
@@ -50,14 +49,10 @@ func (r Rotary) Run() {
 		default:
 			if time.Since(lastDigit) > r.digitTimeout && len(number) > 0 {
 				println("Calling " + number)
-				r.output.Call(number)
+				r.Call(number)
 				lastDigit = time.Now()
 			}
 			time.Sleep(100 * time.Millisecond)
 		}
 	}
-}
-
-func (r Rotary) Debug() {
-	r.output.Debug()
 }
