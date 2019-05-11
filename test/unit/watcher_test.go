@@ -15,9 +15,16 @@ func TestDebouncedWatcher(t *testing.T) {
 		BounceTime:    100 * time.Millisecond,
 		CurrentValues: make(map[uint]uint),
 	}
-	// Eventually there will be 5 stable signals
+
+	last := 0
 	for i := 0; i < 5; i++ {
-		dbw.Watch()
+		// Eventually there will be 5 stable signals
+		_, value := dbw.Watch()
+		v := int(value)
+		if last == v {
+			t.Fatal("Successive signals with the same value")
+		}
+		last = v
 	}
 }
 
