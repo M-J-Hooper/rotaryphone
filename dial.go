@@ -1,10 +1,15 @@
 package rotaryphone
 
-import "time"
+import (
+	"fmt"
+	"time"
 
+	"github.com/brian-armstrong/gpio"
+)
+
+const dialIncrementPin = 20 //14 //=> orange wire
+const dialActivePin = 21    //15    //=> brown wire
 //3.3v  => white wire
-const DialIncrementPin = 14 //=> orange wire
-const DialActivePin = 15    //=> brown wire
 
 type Dial struct {
 	Digit chan int
@@ -12,36 +17,38 @@ type Dial struct {
 
 func NewDial() *Dial {
 	d := &Dial{make(chan int)}
-	go d.Run()
+	go d.run()
 	return d
 }
 
-func (d Dial) Run() {
-	watcher := NewDebouncedWatcher(10 * time.Millisecond)
-	watcher.AddPin(DialIncrementPin)
-	watcher.AddPin(DialActivePin)
-	defer watcher.Close()
+func (d Dial) run() {
+	pinWatcher := gpio.NewWatcher()
+	pinWatcher.AddPin(dialIncrementPin)
+	pinWatcher.AddPin(dialActivePin)
+	defer pinWatcher.Close()
+
+	watcher := NewDebouncedWatcher(pinWatcher, 10*time.Millisecond)
 
 	var active bool
 	var count int
 	for {
-		println("Calling dial watch")
 		pin, value := watcher.Watch()
-		println("After dial watch")
-		if pin == DialActivePin {
+		fmt.Println("Dial got stable signal", pin, value)
+		if pin == dialActivePin {
 			if value == 1 {
 				active = true
 			} else {
 				active = false
 				if count > 0 {
-					if count >= 10 {
+					if count > 9 {
 						count = 0
 					}
+					fmt.Println("Sending digit", count)
 					d.Digit <- count
+					count = 0
 				}
-				count = 0
 			}
-		} else if pin == DialIncrementPin && value == 0 {
+		} else if pin == dialIncrementPin && value == 0 {
 			if active {
 				count++
 			}

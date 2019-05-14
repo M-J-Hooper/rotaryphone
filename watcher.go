@@ -3,83 +3,77 @@ package rotaryphone
 import (
 	"fmt"
 	"time"
-
-	"github.com/brian-armstrong/gpio"
 )
 
 type Watcher interface {
 	Watch() (uint, uint)
-	AddPin(uint)
-	Close()
+}
+
+type Event struct {
+	Time  time.Time
+	Key   uint
+	Value uint
 }
 
 type DebouncedWatcher struct {
 	Watcher
-	BounceTime    time.Duration
-	CurrentValues map[uint]uint
+	BounceTime   time.Duration
+	notification chan Event
+	stop         chan Event
+	notified     map[uint]Event
+	reported     map[uint]Event
 }
 
-func NewDebouncedWatcher(BounceTime time.Duration) *DebouncedWatcher {
-	return &DebouncedWatcher{
-		gpio.NewWatcher(),
-		BounceTime,
-		make(map[uint]uint),
+func NewDebouncedWatcher(watcher Watcher, bounceTime time.Duration) *DebouncedWatcher {
+	dbw := DebouncedWatcher{
+		Watcher:      watcher,
+		BounceTime:   bounceTime,
+		notified:     make(map[uint]Event),
+		reported:     make(map[uint]Event),
+		notification: make(chan Event),
+		stop:         make(chan Event),
+	}
+	go dbw.notify()
+	go dbw.wait()
+	return &dbw
+}
+
+func (dbw *DebouncedWatcher) notify() {
+	for {
+		k, v := dbw.Watcher.Watch()
+		fmt.Println("Run notification", k, v, dbw.notified)
+		dbw.notification <- Event{
+			Time:  time.Now(),
+			Key:   k,
+			Value: v,
+		}
 	}
 }
 
 func (dbw *DebouncedWatcher) Watch() (uint, uint) {
-	var waiting bool
-	stop := make(chan struct{})
-	stable := make(chan gpio.WatcherNotification)
-	notify := make(chan gpio.WatcherNotification)
-
-	go func(notify chan gpio.WatcherNotification) {
-		for {
-			p, v := dbw.Watcher.Watch()
-			notify <- gpio.WatcherNotification{p, v}
-		}
-	}(notify)
-
-	for {
-		select {
-		case n := <-notify:
-			fmt.Println("Notification", n.Pin, n.Value)
-			if n.Value == dbw.CurrentValues[n.Pin] {
-				if waiting {
-					stop <- struct{}{}
-					waiting = false
-				}
-			} else {
-				if !waiting {
-					go dbw.Wait(n, stable, stop)
-					waiting = true
-				}
-			}
-		case n := <-stable:
-			fmt.Println("Got stable", n.Pin, n.Value)
-			dbw.CurrentValues[n.Pin] = n.Value
-			return n.Pin, n.Value
-		}
-	}
-	return 0, 0
+	e := <-dbw.stop
+	return e.Key, e.Value
 }
 
-func (dbw *DebouncedWatcher) Wait(
-	n gpio.WatcherNotification,
-	stable chan gpio.WatcherNotification,
-	stop chan struct{},
-) {
-	start := time.Now()
+func (dbw *DebouncedWatcher) wait() {
 	for {
 		select {
-		case <-stop:
-			fmt.Println("Got stop")
-			return
+		case e := <-dbw.notification:
+			fmt.Println("Got notification with current", e)
+			curr, ok := dbw.notified[e.Key]
+			if !ok || e.Value != curr.Value {
+				dbw.notified[e.Key] = e
+			}
 		default:
-			if time.Since(start) > dbw.BounceTime {
-				fmt.Println("Sending stable", n.Pin, n.Value)
-				stable <- n
-				return
+			for k, n := range dbw.notified {
+				r, ok := dbw.reported[k]
+				if !ok || r.Value != n.Value {
+					if time.Since(n.Time) > dbw.BounceTime {
+						fmt.Println("Sending stable at", time.Now())
+						dbw.reported[k] = n
+						dbw.stop <- n
+					}
+				}
 			}
 		}
 	}

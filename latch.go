@@ -1,35 +1,41 @@
 package rotaryphone
 
-import "time"
+import (
+	"fmt"
+	"time"
+
+	"github.com/brian-armstrong/gpio"
+)
 
 //3.3v  => white wire
-const LatchActivePin = 18 // => dark green wire
+const latchActivePin = 18 // => dark green wire
 
 type Latch struct {
-    Active chan bool
+	Active chan bool
 }
 
 func NewLatch() *Latch {
-    l := &Latch{make(chan bool)}
-    go l.Run()
-    return l
+	l := &Latch{make(chan bool)}
+	go l.run()
+	return l
 }
 
-func (l Latch) Run() {
-    watcher := NewDebouncedWatcher(100 * time.Millisecond)
-    watcher.AddPin(LatchActivePin)
-    defer watcher.Close()
+func (l Latch) run() {
+	pinWatcher := gpio.NewWatcher()
+	pinWatcher.AddPin(latchActivePin)
+	defer pinWatcher.Close()
 
-    for {
-        println("Calling latch watch")
-        pin, value := watcher.Watch()
-        println("After latch watch")
-        if pin == LatchActivePin {
-            if value == 1 {
-                l.Active <-true
-            } else {
-                l.Active <-false
-            }
-        }
-    }
+	watcher := NewDebouncedWatcher(pinWatcher, 100*time.Millisecond)
+
+	for {
+		pin, value := watcher.Watch()
+		fmt.Println("Latch got stable", pin, value)
+		if pin == latchActivePin {
+			if value == 1 {
+				l.Active <- true
+			} else {
+				l.Active <- false
+			}
+		}
+	}
 }
