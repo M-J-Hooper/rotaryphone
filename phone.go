@@ -3,8 +3,6 @@ package rotaryphone
 import (
 	"strconv"
 	"time"
-
-	"github.com/brian-armstrong/gpio"
 )
 
 type OutputAdapter interface {
@@ -56,12 +54,5 @@ func (r Rotary) Run() {
 			}
 			time.Sleep(100 * time.Millisecond)
 		}
-	}
-}
-
-func castGpioChannel(in chan gpio.WatcherNotification, out chan interface{}) {
-	for {
-		n := <-in
-		out <- interface{}(n)
 	}
 }

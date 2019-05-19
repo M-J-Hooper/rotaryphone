@@ -3,8 +3,6 @@ package rotaryphone
 import (
 	"fmt"
 	"time"
-
-	"github.com/brian-armstrong/gpio"
 )
 
 const dialIncrementPin = 20 //14 //=> orange wire
@@ -22,27 +20,15 @@ func NewDial() *Dial {
 }
 
 func (d Dial) run() {
-	activeChan := make(chan interface{})
-	activePinWatcher := gpio.NewWatcher()
-	activePinWatcher.AddPin(dialActivePin)
-	defer activePinWatcher.Close()
-	go castGpioChannel(activePinWatcher.Notification, activeChan)
-	activeWatcher := NewDebouncedWatcher(activeChan, 10*time.Millisecond)
-
-	incChan := make(chan interface{})
-	incPinWatcher := gpio.NewWatcher()
-	incPinWatcher.AddPin(dialIncrementPin)
-	defer incPinWatcher.Close()
-	go castGpioChannel(incPinWatcher.Notification, incChan)
-	incWatcher := NewDebouncedWatcher(incChan, 10*time.Millisecond)
+	incChan := debouncedPin(dialIncrementPin, 10*time.Millisecond)
+	activeChan := debouncedPin(dialActivePin, 10*time.Millisecond)
 
 	var active bool
 	var count int
 	for {
 		select {
-		case n := <-activeWatcher.Notification:
-			value := n.(gpio.WatcherNotification).Value
-			if value == 1 {
+		case n := <-activeChan:
+			if n.Value == 1 {
 				active = true
 			} else {
 				active = false
@@ -55,9 +41,8 @@ func (d Dial) run() {
 					count = 0
 				}
 			}
-		case n := <-incWatcher.Notification:
-			value := n.(gpio.WatcherNotification).Value
-			if value == 0 && active {
+		case n := <-incChan:
+			if n.Value == 0 && active {
 				count++
 			}
 		}
