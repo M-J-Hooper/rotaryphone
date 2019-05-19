@@ -1,78 +1,68 @@
 package rotaryphone
 
 import (
-	"fmt"
+	"log"
 	"time"
 )
 
-type Watcher interface {
-	Watch() (uint, uint)
-}
-
 type Event struct {
-	Time  time.Time
-	Key   uint
-	Value uint
+	Time    time.Time
+	Payload interface{}
 }
 
 type DebouncedWatcher struct {
-	Watcher
 	BounceTime   time.Duration
-	notification chan Event
-	stop         chan Event
-	notified     map[uint]Event
-	reported     map[uint]Event
+	Notification chan interface{}
+	report       chan Event
+	notified     Event
+	reported     Event
 }
 
-func NewDebouncedWatcher(watcher Watcher, bounceTime time.Duration) *DebouncedWatcher {
-	dbw := DebouncedWatcher{
-		Watcher:      watcher,
-		BounceTime:   bounceTime,
-		notified:     make(map[uint]Event),
-		reported:     make(map[uint]Event),
-		notification: make(chan Event),
-		stop:         make(chan Event),
+func NewDebouncedWatcher(n chan interface{}, b time.Duration) *DebouncedWatcher {
+	emptyEvent := Event{
+		Time:    time.Now(),
+		Payload: nil,
 	}
-	go dbw.notify()
-	go dbw.wait()
+	dbw := DebouncedWatcher{
+		Notification: n,
+		BounceTime:   b,
+		report:       make(chan Event),
+		notified:     emptyEvent,
+		reported:     emptyEvent,
+	}
+	go dbw.run()
 	return &dbw
 }
 
-func (dbw *DebouncedWatcher) notify() {
-	for {
-		k, v := dbw.Watcher.Watch()
-		fmt.Println("Run notification", k, v, dbw.notified)
-		dbw.notification <- Event{
-			Time:  time.Now(),
-			Key:   k,
-			Value: v,
-		}
-	}
+func Debounce(n chan interface{}, b time.Duration) chan interface{} {
+	dbw := NewDebouncedWatcher(n, b)
+	return dbw.Notification
 }
 
-func (dbw *DebouncedWatcher) Watch() (uint, uint) {
-	e := <-dbw.stop
-	return e.Key, e.Value
+func (dbw *DebouncedWatcher) Watch() interface{} {
+	e := <-dbw.report
+	return e.Payload
 }
 
-func (dbw *DebouncedWatcher) wait() {
+func (dbw *DebouncedWatcher) run() {
 	for {
+		n := dbw.notified
 		select {
-		case e := <-dbw.notification:
-			fmt.Println("Got notification with current", e)
-			curr, ok := dbw.notified[e.Key]
-			if !ok || e.Value != curr.Value {
-				dbw.notified[e.Key] = e
+		case payload := <-dbw.Notification:
+			log.Println("Received notification with", payload)
+			if n.Payload != payload {
+				dbw.notified = Event{
+					Time:    time.Now(),
+					Payload: payload,
+				}
 			}
 		default:
-			for k, n := range dbw.notified {
-				r, ok := dbw.reported[k]
-				if !ok || r.Value != n.Value {
-					if time.Since(n.Time) > dbw.BounceTime {
-						fmt.Println("Sending stable at", time.Now())
-						dbw.reported[k] = n
-						dbw.stop <- n
-					}
+			r := dbw.reported
+			if n.Payload != nil && r.Payload != n.Payload {
+				if time.Since(n.Time) > dbw.BounceTime {
+					log.Println("Reporting debounced at", time.Now())
+					dbw.reported = n
+					dbw.report <- n
 				}
 			}
 		}

@@ -7,44 +7,36 @@ import (
 	"time"
 
 	"github.com/M-J-Hooper/rotaryphone"
-	"github.com/brian-armstrong/gpio"
 )
 
 func TestDebouncedWatcher(t *testing.T) {
 	watcher := NewTestWatcher(4 * time.Millisecond)
-	dbw := rotaryphone.NewDebouncedWatcher(watcher, 10*time.Millisecond)
+	dbw := rotaryphone.NewDebouncedWatcher(watcher.Notification, 10*time.Millisecond)
 
-	last := 2
+	last := -1
 	for i := 0; i < 5; i++ {
 		// Eventually there will be 5 stable signals
-		_, value := dbw.Watch()
-		v := int(value)
-		fmt.Println("Test got stable value", value)
-		if last == v {
+		n := dbw.Watch().(int)
+		fmt.Println("Test got stable value", n)
+		if last == n {
 			t.Fatal("Successive signals with the same value")
 		}
-		last = v
+		last = n
 	}
 }
 
 type TestWatcher struct {
-	notification chan gpio.WatcherNotification
+	Notification chan interface{}
 }
 
 func NewTestWatcher(sleep time.Duration) *TestWatcher {
 	rand.Seed(time.Now().UnixNano())
-	c := make(chan gpio.WatcherNotification)
-	go func(c chan gpio.WatcherNotification) {
+	c := make(chan interface{})
+	go func(c chan interface{}) {
 		for {
 			time.Sleep(sleep)
-			value := uint(rand.Intn(2))
-			c <- gpio.WatcherNotification{Pin: 1, Value: value}
+			c <- interface{}(rand.Intn(3))
 		}
 	}(c)
 	return &TestWatcher{c}
-}
-
-func (t *TestWatcher) Watch() (uint, uint) {
-	n := <-t.notification
-	return n.Pin, n.Value
 }

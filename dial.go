@@ -22,19 +22,26 @@ func NewDial() *Dial {
 }
 
 func (d Dial) run() {
-	pinWatcher := gpio.NewWatcher()
-	pinWatcher.AddPin(dialIncrementPin)
-	pinWatcher.AddPin(dialActivePin)
-	defer pinWatcher.Close()
+	activeChan := make(chan interface{})
+	activePinWatcher := gpio.NewWatcher()
+	activePinWatcher.AddPin(dialActivePin)
+	defer activePinWatcher.Close()
+	go castGpioChannel(activePinWatcher.Notification, activeChan)
+	activeWatcher := NewDebouncedWatcher(activeChan, 10*time.Millisecond)
 
-	watcher := NewDebouncedWatcher(pinWatcher, 10*time.Millisecond)
+	incChan := make(chan interface{})
+	incPinWatcher := gpio.NewWatcher()
+	incPinWatcher.AddPin(dialIncrementPin)
+	defer incPinWatcher.Close()
+	go castGpioChannel(incPinWatcher.Notification, incChan)
+	incWatcher := NewDebouncedWatcher(incChan, 10*time.Millisecond)
 
 	var active bool
 	var count int
 	for {
-		pin, value := watcher.Watch()
-		fmt.Println("Dial got stable signal", pin, value)
-		if pin == dialActivePin {
+		select {
+		case n := <-activeWatcher.Notification:
+			value := n.(gpio.WatcherNotification).Value
 			if value == 1 {
 				active = true
 			} else {
@@ -48,8 +55,9 @@ func (d Dial) run() {
 					count = 0
 				}
 			}
-		} else if pin == dialIncrementPin && value == 0 {
-			if active {
+		case n := <-incWatcher.Notification:
+			value := n.(gpio.WatcherNotification).Value
+			if value == 0 && active {
 				count++
 			}
 		}

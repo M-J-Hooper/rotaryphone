@@ -25,10 +25,15 @@ func (l Latch) run() {
 	pinWatcher.AddPin(latchActivePin)
 	defer pinWatcher.Close()
 
-	watcher := NewDebouncedWatcher(pinWatcher, 100*time.Millisecond)
+	c := make(chan interface{})
+	go castGpioChannel(pinWatcher.Notification, c)
+
+	watcher := NewDebouncedWatcher(c, 100*time.Millisecond)
 
 	for {
-		pin, value := watcher.Watch()
+		n := watcher.Watch().(gpio.WatcherNotification)
+		pin, value := n.Pin, n.Value
+
 		fmt.Println("Latch got stable", pin, value)
 		if pin == latchActivePin {
 			if value == 1 {
