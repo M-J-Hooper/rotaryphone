@@ -13,7 +13,6 @@ func debouncedPin(pin uint, t time.Duration) chan gpio.WatcherNotification {
 
 	w := gpio.NewWatcher()
 	w.AddPin(pin)
-	defer w.Close()
 
 	go convertFromPinChannel(w.Notification, c)
 	db := debounce.Channel(c, t)

@@ -5,13 +5,13 @@ import (
 	"time"
 )
 
-type OutputAdapter interface {
+type Phone interface {
 	Call(string)
 	Hangup()
 }
 
 type Rotary struct {
-	OutputAdapter
+	Phone
 	digitTimeout time.Duration
 	dial         Dial
 	latch        Latch
@@ -19,7 +19,7 @@ type Rotary struct {
 
 func NewRotary(digitTimeout time.Duration) *Rotary {
 	return &Rotary{
-		NewOfonoAdapter(),
+		NewOfonoPhone(),
 		digitTimeout,
 		*NewDial(),
 		*NewLatch(),
@@ -50,7 +50,7 @@ func (r Rotary) Run() {
 			if time.Since(lastDigit) > r.digitTimeout && len(number) > 0 {
 				println("Calling " + number)
 				r.Call(number)
-				lastDigit = time.Now()
+				number = ""
 			}
 			time.Sleep(100 * time.Millisecond)
 		}

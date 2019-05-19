@@ -8,7 +8,7 @@ import (
 	"github.com/brian-armstrong/gpio"
 )
 
-func TestPins(t *testing.T) {
+func TestPinsFunctional(t *testing.T) {
 	watcher := gpio.NewWatcher()
 	watcher.AddPin(dialActivePin)
 	watcher.AddPin(dialIncrementPin)
